@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "jolab-14e57"
+  },
+  "targets": {
+    "jolab-14e57": {
+      "hosting": {
+        "depenses": [
+          "depenses"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
