@@ -94,7 +94,9 @@ function ResumeMois({
     );
 
   /*
+   * ==============================
    * MOIS AFFICHÉ
+   * ==============================
    */
 
   const debutMois =
@@ -128,6 +130,10 @@ function ResumeMois({
       ]
     );
 
+  /*
+   * TOTAL DU MOIS AFFICHÉ
+   */
+
   const total =
     occurrencesMois.reduce(
       (
@@ -142,7 +148,9 @@ function ResumeMois({
     );
 
   /*
+   * ==============================
    * AUJOURD'HUI
+   * ==============================
    */
 
   const aujourdHui =
@@ -156,19 +164,38 @@ function ResumeMois({
   );
 
   /*
+   * ==============================
    * MOYENNE MENSUELLE
+   * ==============================
    *
-   * Commence en juillet 2026.
-   * Le mois actuel est exclu.
+   * DÉPART :
+   * 1er avril 2026
+   *
+   * Le mois en cours
+   * n'entre JAMAIS dans la moyenne.
+   *
+   * Exemple en août 2026 :
+   *
+   * Avril
+   * Mai
+   * Juin
+   * Juillet
+   *
+   * Total / 4
    */
 
   const debutHistorique =
     new Date(
       2026,
-      6,
+      3,
       1,
       12
     );
+
+  /*
+   * Dernier jour du mois
+   * précédent.
+   */
 
   const finDernierMoisComplet =
     new Date(
@@ -178,20 +205,41 @@ function ResumeMois({
       12
     );
 
-  const indexJuillet2026 =
-    2026 * 12 + 6;
+  /*
+   * Avril 2026
+   *
+   * Janvier = 0
+   * Avril = 3
+   */
+
+  const indexAvril2026 =
+    2026 * 12 + 3;
 
   const indexMoisActuel =
     aujourdHui.getFullYear() *
       12 +
     aujourdHui.getMonth();
 
+  /*
+   * Nombre de mois COMPLETS
+   * depuis avril 2026,
+   * en excluant le mois actuel.
+   */
+
   const nombreMoisComplets =
     Math.max(
       0,
       indexMoisActuel -
-        indexJuillet2026
+        indexAvril2026
     );
+
+  /*
+   * Dépenses entre :
+   *
+   * 1 avril 2026
+   * et
+   * dernier jour du mois précédent
+   */
 
   const occurrencesHistorique =
     useMemo(() => {
@@ -234,7 +282,18 @@ function ResumeMois({
       : null;
 
   /*
+   * ==============================
    * MOYENNE PAR SEMAINE
+   * ==============================
+   *
+   * Mois actuel :
+   * seulement jusqu'à aujourd'hui
+   *
+   * Mois passé :
+   * tout le mois
+   *
+   * Mois futur :
+   * aucune moyenne
    */
 
   const debutMoisActuel =
@@ -258,6 +317,11 @@ function ResumeMois({
   const estMoisFutur =
     debutMois >
     debutMoisActuel;
+
+  /*
+   * 28 / 29 / 30 / 31 jours
+   * automatiquement.
+   */
 
   const nombreJoursDuMois =
     finMois.getDate();
@@ -284,6 +348,11 @@ function ResumeMois({
           12
         )
       : null;
+
+  /*
+   * Seulement les dépenses
+   * jusqu'à la date calculée.
+   */
 
   const occurrencesPourMoyenne =
     useMemo(() => {
@@ -329,12 +398,16 @@ function ResumeMois({
       dernierJourMoyenne / 7;
 
     moyenneSemaine =
-      totalPourMoyenne /
-      semainesEcoulees;
+      semainesEcoulees > 0
+        ? totalPourMoyenne /
+          semainesEcoulees
+        : 0;
   }
 
   /*
+   * ==============================
    * CATÉGORIES
+   * ==============================
    */
 
   const categories = {};
@@ -347,11 +420,9 @@ function ResumeMois({
         );
 
       categories[nom] =
-        (categories[nom] ||
-          0) +
+        (categories[nom] || 0) +
         Number(
-          depense.montant ||
-            0
+          depense.montant || 0
         );
     }
   );
@@ -376,7 +447,9 @@ function ResumeMois({
       );
 
   /*
+   * ==============================
    * MODES DE PAIEMENT
+   * ==============================
    */
 
   const paiements = {};
@@ -388,11 +461,9 @@ function ResumeMois({
         "Non défini";
 
       paiements[mode] =
-        (paiements[mode] ||
-          0) +
+        (paiements[mode] || 0) +
         Number(
-          depense.montant ||
-            0
+          depense.montant || 0
         );
     }
   );
@@ -422,6 +493,7 @@ function ResumeMois({
         .resume-mois {
           min-width: 0;
           min-height: 0;
+
           height: 100%;
 
           display: flex;
@@ -487,6 +559,7 @@ function ResumeMois({
 
         .resume-mois-contenu {
           flex: 1 1 0;
+
           min-height: 0;
 
           overflow-y: auto;
@@ -575,6 +648,8 @@ function ResumeMois({
               0.45vw,
               9px
             );
+
+          line-height: 1.25;
         }
 
         .resume-stats {
@@ -651,6 +726,8 @@ function ResumeMois({
               0.48vw,
               9px
             );
+
+          white-space: nowrap;
         }
 
         .resume-section {
@@ -741,10 +818,6 @@ function ResumeMois({
               13px
             );
         }
-
-        /*
-         * NOM CATÉGORIE + POINT
-         */
 
         .resume-categorie-nom {
           min-width: 0;
@@ -873,6 +946,10 @@ function ResumeMois({
           font-size: 17px;
         }
 
+        .resume-filtre-actif button:hover {
+          color: #101828;
+        }
+
         .resume-paiement-ligne {
           padding: 6px 1px;
 
@@ -906,7 +983,10 @@ function ResumeMois({
 
           .resume-grands-chiffres {
             grid-template-columns:
-              repeat(2, 1fr);
+              repeat(
+                2,
+                1fr
+              );
           }
         }
 
@@ -966,7 +1046,7 @@ function ResumeMois({
                       1
                         ? "s"
                         : ""
-                    } depuis juillet 2026`
+                    } depuis avril 2026`
                   : "Aucun mois complet disponible"}
               </div>
             </div>

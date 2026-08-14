@@ -21,7 +21,8 @@ import ResumeMois from "./ResumeMois";
 function App() {
   const maintenant = new Date();
 
-  const [depenses, setDepenses] = useState([]);
+  const [depenses, setDepenses] =
+    useState([]);
 
   const [
     afficherAjout,
@@ -65,47 +66,50 @@ function App() {
   );
 
   useEffect(() => {
-    const depensesRef = collection(
-      db,
-      "applications",
-      "depenses",
-      "depenses"
-    );
+    const depensesRef =
+      collection(
+        db,
+        "applications",
+        "depenses",
+        "depenses"
+      );
 
     const q = query(
       depensesRef,
       orderBy("date", "asc")
     );
 
-    const unsubscribe = onSnapshot(
-      q,
+    const unsubscribe =
+      onSnapshot(
+        q,
 
-      (snapshot) => {
-        const liste =
-          snapshot.docs.map(
-            (document) => ({
-              id: document.id,
-              ...document.data(),
-            })
+        (snapshot) => {
+          const liste =
+            snapshot.docs.map(
+              (document) => ({
+                id: document.id,
+                ...document.data(),
+              })
+            );
+
+          setDepenses(liste);
+          setErreur("");
+        },
+
+        (err) => {
+          console.error(
+            "Erreur Firestore :",
+            err
           );
 
-        setDepenses(liste);
-        setErreur("");
-      },
+          setErreur(
+            "Impossible de charger les dépenses."
+          );
+        }
+      );
 
-      (err) => {
-        console.error(
-          "Erreur Firestore :",
-          err
-        );
-
-        setErreur(
-          "Impossible de charger les dépenses."
-        );
-      }
-    );
-
-    return () => unsubscribe();
+    return () =>
+      unsubscribe();
   }, []);
 
   const ajouterDepense =
@@ -173,6 +177,175 @@ function App() {
       }
     };
 
+  /*
+   * DÉPLACER UNE DÉPENSE
+   *
+   * Pour une dépense unique :
+   * elle va simplement à la
+   * nouvelle date.
+   *
+   * Pour une récurrence :
+   * toute la série se décale
+   * du même nombre de jours.
+   */
+
+  const deplacerDepense =
+    async (
+      id,
+      dateOccurrence,
+      nouvelleDate
+    ) => {
+      const depense =
+        depenses.find(
+          (item) =>
+            item.id === id
+        );
+
+      if (!depense) {
+        return;
+      }
+
+      const creerDate = (
+        texte
+      ) => {
+        const [
+          annee,
+          mois,
+          jour,
+        ] = texte
+          .split("-")
+          .map(Number);
+
+        return new Date(
+          annee,
+          mois - 1,
+          jour,
+          12
+        );
+      };
+
+      const dateVersTexte = (
+        date
+      ) => {
+        const annee =
+          date.getFullYear();
+
+        const mois = String(
+          date.getMonth() + 1
+        ).padStart(2, "0");
+
+        const jour = String(
+          date.getDate()
+        ).padStart(2, "0");
+
+        return `${annee}-${mois}-${jour}`;
+      };
+
+      const occurrenceDepart =
+        creerDate(
+          dateOccurrence
+        );
+
+      const occurrenceArrivee =
+        creerDate(
+          nouvelleDate
+        );
+
+      const differenceMs =
+        occurrenceArrivee.getTime() -
+        occurrenceDepart.getTime();
+
+      const differenceJours =
+        Math.round(
+          differenceMs /
+            (
+              1000 *
+              60 *
+              60 *
+              24
+            )
+        );
+
+      if (
+        differenceJours === 0
+      ) {
+        return;
+      }
+
+      const dateOriginale =
+        creerDate(
+          depense.date
+        );
+
+      dateOriginale.setDate(
+        dateOriginale.getDate() +
+          differenceJours
+      );
+
+      const modifications = {
+        date:
+          dateVersTexte(
+            dateOriginale
+          ),
+
+        modifieLe:
+          new Date().toISOString(),
+      };
+
+      /*
+       * S'il y a une date de fin,
+       * on la décale elle aussi.
+       */
+
+      if (
+        depense.dateFinRecurrence
+      ) {
+        const dateFin =
+          creerDate(
+            depense
+              .dateFinRecurrence
+          );
+
+        dateFin.setDate(
+          dateFin.getDate() +
+            differenceJours
+        );
+
+        modifications.dateFinRecurrence =
+          dateVersTexte(
+            dateFin
+          );
+      }
+
+      try {
+        await updateDoc(
+          doc(
+            db,
+            "applications",
+            "depenses",
+            "depenses",
+            id
+          ),
+          modifications
+        );
+
+        setDateSelectionnee(
+          nouvelleDate
+        );
+
+        setErreur("");
+      } catch (err) {
+        console.error(
+          "Erreur déplacement :",
+          err
+        );
+
+        setErreur(
+          "Impossible de déplacer la dépense."
+        );
+      }
+    };
+
   const supprimerDepense =
     async (id) => {
       const depense =
@@ -232,7 +405,9 @@ function App() {
             item.id === id
         );
 
-      if (!depense) return;
+      if (!depense) {
+        return;
+      }
 
       setAfficherAjout(false);
 
@@ -308,8 +483,10 @@ function App() {
           flex: 0 0 auto;
 
           display: flex;
+
           align-items: center;
-          justify-content: space-between;
+          justify-content:
+            space-between;
 
           gap: 15px;
 
@@ -347,6 +524,7 @@ function App() {
 
         .app-actions {
           display: flex;
+
           gap: 7px;
         }
 
@@ -356,8 +534,16 @@ function App() {
           border-radius: 8px;
 
           padding:
-            clamp(6px, 0.7vh, 9px)
-            clamp(9px, 0.8vw, 14px);
+            clamp(
+              6px,
+              0.7vh,
+              9px
+            )
+            clamp(
+              9px,
+              0.8vw,
+              14px
+            );
 
           font-size:
             clamp(
@@ -373,6 +559,7 @@ function App() {
 
         .app-btn-primary {
           color: white;
+
           background: #1f2937;
         }
 
@@ -382,6 +569,7 @@ function App() {
 
         .app-btn-secondary {
           color: #374151;
+
           background: white;
 
           border:
@@ -413,6 +601,7 @@ function App() {
 
         .page-calendrier {
           flex: 1 1 0;
+
           min-height: 0;
 
           display: grid;
@@ -460,11 +649,13 @@ function App() {
           body,
           #root {
             height: auto;
+
             min-height: 100%;
           }
 
           .app {
             height: auto;
+
             min-height: 100dvh;
 
             overflow: visible;
@@ -499,8 +690,11 @@ function App() {
           max-width: 430px
         ) {
           .app-header {
-            align-items: flex-start;
-            flex-direction: column;
+            align-items:
+              flex-start;
+
+            flex-direction:
+              column;
           }
 
           .app-actions {
@@ -521,12 +715,14 @@ function App() {
             </h1>
 
             <p>
-              Suivi de mes dépenses personnelles
+              Suivi de mes dépenses
+              personnelles
             </p>
           </div>
 
           <div className="app-actions">
-            {page === "calendrier" ? (
+            {page ===
+            "calendrier" ? (
               <button
                 className="app-btn app-btn-secondary"
                 onClick={() =>
@@ -539,7 +735,9 @@ function App() {
               <button
                 className="app-btn app-btn-secondary"
                 onClick={() =>
-                  setPage("calendrier")
+                  setPage(
+                    "calendrier"
+                  )
                 }
               >
                 ← Calendrier
@@ -561,10 +759,13 @@ function App() {
           </div>
         )}
 
-        {page === "calendrier" && (
+        {page ===
+          "calendrier" && (
           <div className="page-calendrier">
             <Calendrier
-              depenses={depenses}
+              depenses={
+                depenses
+              }
               dateSelectionnee={
                 dateSelectionnee
               }
@@ -576,6 +777,9 @@ function App() {
               }
               ouvrirModification={
                 ouvrirModification
+              }
+              deplacerDepense={
+                deplacerDepense
               }
               moisAffiche={
                 moisAffiche
@@ -589,7 +793,9 @@ function App() {
             />
 
             <ResumeMois
-              depenses={depenses}
+              depenses={
+                depenses
+              }
               moisAffiche={
                 moisAffiche
               }
@@ -606,7 +812,9 @@ function App() {
         {page === "recap" && (
           <div className="page-recap">
             <Recapitulatif
-              depenses={depenses}
+              depenses={
+                depenses
+              }
             />
           </div>
         )}
@@ -614,7 +822,9 @@ function App() {
         {(afficherAjout ||
           depenseAModifier) && (
           <AjouterDepense
-            depenses={depenses}
+            depenses={
+              depenses
+            }
             dateSelectionnee={
               dateSelectionnee
             }
@@ -631,8 +841,13 @@ function App() {
               depenseAModifier
             }
             fermer={() => {
-              setAfficherAjout(false);
-              setDepenseAModifier(null);
+              setAfficherAjout(
+                false
+              );
+
+              setDepenseAModifier(
+                null
+              );
             }}
           />
         )}

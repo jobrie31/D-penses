@@ -1,5 +1,6 @@
 import {
   useMemo,
+  useState,
 } from "react";
 
 import {
@@ -12,10 +13,16 @@ function Calendrier({
   setDateSelectionnee,
   supprimerDepense,
   ouvrirModification,
+  deplacerDepense,
   moisAffiche,
   setMoisAffiche,
   categorieSelectionnee,
 }) {
+  const [
+    dateSurvolee,
+    setDateSurvolee,
+  ] = useState(null);
+
   const mois =
     moisAffiche.getMonth();
 
@@ -36,10 +43,6 @@ function Calendrier({
     "Novembre",
     "Décembre",
   ];
-
-  /*
-   * DIMANCHE = PREMIER JOUR
-   */
 
   const joursSemaine = [
     "Dim",
@@ -65,11 +68,6 @@ function Calendrier({
       categorie || "Autre"
     );
   };
-
-  /*
-   * MÊMES COULEURS QUE
-   * DANS LE RÉSUMÉ
-   */
 
   const couleurCategorie = (
     categorie
@@ -101,7 +99,9 @@ function Calendrier({
     );
   };
 
-  const argent = (montant) =>
+  const argent = (
+    montant
+  ) =>
     Number(
       montant || 0
     ).toLocaleString(
@@ -119,16 +119,9 @@ function Calendrier({
   ) =>
     `${annee}-${String(
       mois + 1
-    ).padStart(
-      2,
-      "0"
-    )}-${String(
+    ).padStart(2, "0")}-${String(
       jour
     ).padStart(2, "0")}`;
-
-  /*
-   * CALENDRIER
-   */
 
   const premierJour =
     new Date(
@@ -175,10 +168,6 @@ function Calendrier({
   const nombreSemaines =
     cellules.length / 7;
 
-  /*
-   * OCCURRENCES
-   */
-
   const debutMois =
     new Date(
       annee,
@@ -215,10 +204,6 @@ function Calendrier({
       .toISOString()
       .split("T")[0];
 
-  /*
-   * NAVIGATION
-   */
-
   const moisPrecedent = () => {
     setMoisAffiche(
       new Date(
@@ -239,29 +224,25 @@ function Calendrier({
     );
   };
 
-  const allerAujourdhui = () => {
-    const date =
-      new Date();
+  const allerAujourdhui =
+    () => {
+      const date =
+        new Date();
 
-    setMoisAffiche(
-      new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        1
-      )
-    );
+      setMoisAffiche(
+        new Date(
+          date.getFullYear(),
+          date.getMonth(),
+          1
+        )
+      );
 
-    setDateSelectionnee(
-      date
-        .toISOString()
-        .split("T")[0]
-    );
-  };
-
-  /*
-   * COULEUR DE FOND =
-   * RÉCURRENCE
-   */
+      setDateSelectionnee(
+        date
+          .toISOString()
+          .split("T")[0]
+      );
+    };
 
   const classeRecurrence = (
     recurrence
@@ -283,6 +264,120 @@ function Calendrier({
         return "depense-unique";
     }
   };
+
+  /*
+   * ==============================
+   * DRAG & DROP
+   * ==============================
+   */
+
+  const commencerDeplacement =
+    (
+      evenement,
+      depense
+    ) => {
+      evenement.stopPropagation();
+
+      evenement.dataTransfer.effectAllowed =
+        "move";
+
+      evenement.dataTransfer.setData(
+        "application/json",
+        JSON.stringify({
+          id: depense.id,
+
+          dateOccurrence:
+            depense.dateOccurrence,
+        })
+      );
+    };
+
+  const autoriserDepot =
+    (
+      evenement,
+      date
+    ) => {
+      evenement.preventDefault();
+
+      evenement.dataTransfer.dropEffect =
+        "move";
+
+      setDateSurvolee(
+        date
+      );
+    };
+
+  const terminerSurvol =
+    (
+      evenement,
+      date
+    ) => {
+      /*
+       * On évite de retirer le
+       * surlignage lorsqu'on passe
+       * sur un enfant de la case.
+       */
+
+      if (
+        evenement.currentTarget.contains(
+          evenement.relatedTarget
+        )
+      ) {
+        return;
+      }
+
+      if (
+        dateSurvolee === date
+      ) {
+        setDateSurvolee(
+          null
+        );
+      }
+    };
+
+  const deposerDepense =
+    async (
+      evenement,
+      nouvelleDate
+    ) => {
+      evenement.preventDefault();
+
+      evenement.stopPropagation();
+
+      setDateSurvolee(
+        null
+      );
+
+      const donnees =
+        evenement.dataTransfer.getData(
+          "application/json"
+        );
+
+      if (!donnees) {
+        return;
+      }
+
+      try {
+        const {
+          id,
+          dateOccurrence,
+        } =
+          JSON.parse(
+            donnees
+          );
+
+        await deplacerDepense(
+          id,
+          dateOccurrence,
+          nouvelleDate
+        );
+      } catch (err) {
+        console.error(
+          "Erreur drag/drop :",
+          err
+        );
+      }
+    };
 
   return (
     <>
@@ -418,6 +513,7 @@ function Calendrier({
 
         .calendrier-grille {
           flex: 1 1 0;
+
           min-height: 0;
 
           display: grid;
@@ -439,6 +535,8 @@ function Calendrier({
           min-width: 0;
           min-height: 0;
 
+          position: relative;
+
           padding:
             clamp(
               3px,
@@ -457,6 +555,10 @@ function Calendrier({
           background: white;
 
           cursor: pointer;
+
+          transition:
+            background 0.12s ease,
+            box-shadow 0.12s ease;
         }
 
         .calendrier-jour:nth-child(
@@ -480,6 +582,49 @@ function Calendrier({
             inset 0 0 0
             1.5px
             #25344a;
+        }
+
+        /*
+         * CASE OÙ ON EST SUR LE POINT
+         * DE DÉPOSER LA DÉPENSE
+         */
+
+        .calendrier-jour-drop {
+          background: #eef6ff;
+
+          box-shadow:
+            inset 0 0 0
+            2px #3b82f6;
+        }
+
+        .calendrier-jour-drop::after {
+          content: "Déplacer ici";
+
+          position: absolute;
+
+          left: 50%;
+          bottom: 5px;
+
+          transform:
+            translateX(-50%);
+
+          padding: 3px 7px;
+
+          border-radius: 20px;
+
+          background: #2563eb;
+
+          color: white;
+
+          font-size: 8px;
+
+          font-weight: 700;
+
+          pointer-events: none;
+
+          white-space: nowrap;
+
+          z-index: 10;
         }
 
         .jour-haut {
@@ -560,10 +705,6 @@ function Calendrier({
             );
         }
 
-        /*
-         * DÉPENSE
-         */
-
         .depense-calendrier {
           min-width: 0;
 
@@ -579,14 +720,13 @@ function Calendrier({
             );
 
           border:
-            1px solid
-            transparent;
+            1px solid transparent;
 
           border-radius: 6px;
 
           overflow: hidden;
 
-          cursor: pointer;
+          cursor: grab;
 
           transition:
             opacity 0.18s ease,
@@ -595,9 +735,17 @@ function Calendrier({
             filter 0.18s ease;
         }
 
+        .depense-calendrier:active {
+          cursor: grabbing;
+        }
+
         .depense-calendrier:hover {
           filter:
             brightness(0.97);
+        }
+
+        .depense-calendrier[draggable="true"] {
+          user-select: none;
         }
 
         .depense-calendrier.depense-estompee {
@@ -632,12 +780,6 @@ function Calendrier({
           z-index: 2;
         }
 
-        /*
-         * La petite barre à gauche
-         * continue d'indiquer
-         * la RÉCURRENCE.
-         */
-
         .depense-barre {
           flex: 0 0 auto;
 
@@ -659,10 +801,6 @@ function Calendrier({
 
           padding: 0 6px;
         }
-
-        /*
-         * NOM + POINT CATÉGORIE
-         */
 
         .depense-nom-zone {
           flex: 1;
@@ -758,12 +896,13 @@ function Calendrier({
 
           border: 0;
 
-          background:
-            transparent;
+          background: transparent;
 
           color: #98a2b3;
 
           font-size: 12px;
+
+          cursor: pointer;
         }
 
         .depense-supprimer:hover {
@@ -771,7 +910,7 @@ function Calendrier({
         }
 
         /*
-         * RÉCURRENCE
+         * RÉCURRENCES
          */
 
         .depense-unique {
@@ -892,25 +1031,6 @@ function Calendrier({
 
         .legende-annee {
           background: #f79009;
-        }
-
-        @media (
-          max-height: 750px
-        )
-        and
-        (min-width: 801px)
-        {
-          .depense-calendrier {
-            height: 21px;
-          }
-
-          .depense-nom {
-            font-size: 10px;
-          }
-
-          .depense-montant {
-            font-size: 9px;
-          }
         }
 
         @media (
@@ -1066,9 +1186,36 @@ function Calendrier({
                     dateSelectionnee
                       ? "calendrier-jour-selectionne"
                       : ""
+                  } ${
+                    date ===
+                    dateSurvolee
+                      ? "calendrier-jour-drop"
+                      : ""
                   }`}
                   onClick={() =>
                     setDateSelectionnee(
+                      date
+                    )
+                  }
+                  onDragOver={(
+                    e
+                  ) =>
+                    autoriserDepot(
+                      e,
+                      date
+                    )
+                  }
+                  onDragLeave={(
+                    e
+                  ) =>
+                    terminerSurvol(
+                      e,
+                      date
+                    )
+                  }
+                  onDrop={(e) =>
+                    deposerDepense(
+                      e,
                       date
                     )
                   }
@@ -1096,9 +1243,7 @@ function Calendrier({
 
                   <div className="liste-depenses-jour">
                     {depensesJour.map(
-                      (
-                        depense
-                      ) => {
+                      (depense) => {
                         const categorie =
                           normaliserCategorie(
                             depense.categorie
@@ -1122,6 +1267,20 @@ function Calendrier({
                         return (
                           <div
                             key={`${depense.id}-${depense.dateOccurrence}`}
+                            draggable
+                            onDragStart={(
+                              e
+                            ) =>
+                              commencerDeplacement(
+                                e,
+                                depense
+                              )
+                            }
+                            onDragEnd={() =>
+                              setDateSurvolee(
+                                null
+                              )
+                            }
                             className={`depense-calendrier ${classeRecurrence(
                               depense.recurrence
                             )} ${
@@ -1133,7 +1292,7 @@ function Calendrier({
                                 ? "depense-estompee"
                                 : ""
                             }`}
-                            title={`${categorie} — cliquer pour modifier`}
+                            title={`${categorie} — cliquer pour modifier ou glisser pour déplacer`}
                             onClick={(
                               e
                             ) => {
@@ -1173,6 +1332,9 @@ function Calendrier({
                             <button
                               className="depense-supprimer"
                               title="Supprimer"
+                              draggable={
+                                false
+                              }
                               onClick={(
                                 e
                               ) => {
