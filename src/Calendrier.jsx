@@ -693,6 +693,8 @@ function Calendrier({
         }
 
         .liste-depenses-jour {
+          min-height: 0;
+
           display: flex;
 
           flex-direction: column;
@@ -703,6 +705,201 @@ function Calendrier({
               0.3vh,
               4px
             );
+        }
+
+        /*
+         * Plus il y a de dépenses dans une journée,
+         * plus les lignes se compactent pour garder
+         * jusqu'à 5 dépenses visibles dans la case.
+         */
+
+        .liste-depenses-jour.densite-3 {
+          gap: 2px;
+        }
+
+        .liste-depenses-jour.densite-3
+        .depense-calendrier {
+          height:
+            clamp(
+              19px,
+              2.25vh,
+              25px
+            );
+        }
+
+        .liste-depenses-jour.densite-3
+        .depense-nom {
+          font-size:
+            clamp(
+              9px,
+              0.68vw,
+              12px
+            );
+        }
+
+        .liste-depenses-jour.densite-3
+        .depense-montant {
+          font-size:
+            clamp(
+              8px,
+              0.62vw,
+              10px
+            );
+        }
+
+        .liste-depenses-jour.densite-4 {
+          gap: 2px;
+        }
+
+        .liste-depenses-jour.densite-4
+        .depense-calendrier {
+          height:
+            clamp(
+              17px,
+              2vh,
+              22px
+            );
+        }
+
+        .liste-depenses-jour.densite-4
+        .depense-contenu {
+          gap: 3px;
+          padding: 0 4px;
+        }
+
+        .liste-depenses-jour.densite-4
+        .depense-nom-zone {
+          gap: 3px;
+        }
+
+        .liste-depenses-jour.densite-4
+        .depense-categorie-point {
+          width: 6px;
+          height: 6px;
+        }
+
+        .liste-depenses-jour.densite-4
+        .depense-nom {
+          font-size:
+            clamp(
+              8px,
+              0.58vw,
+              10px
+            );
+        }
+
+        .liste-depenses-jour.densite-4
+        .depense-montant {
+          font-size:
+            clamp(
+              7px,
+              0.54vw,
+              9px
+            );
+        }
+
+        .liste-depenses-jour.densite-4
+        .depense-supprimer {
+          width: 15px;
+          font-size: 10px;
+        }
+
+        .liste-depenses-jour.densite-5 {
+          gap: 1px;
+        }
+
+        .liste-depenses-jour.densite-5
+        .depense-calendrier {
+          height:
+            clamp(
+              15px,
+              1.75vh,
+              19px
+            );
+
+          border-radius: 4px;
+        }
+
+        .liste-depenses-jour.densite-5
+        .depense-barre {
+          width: 3px;
+        }
+
+        .liste-depenses-jour.densite-5
+        .depense-contenu {
+          gap: 2px;
+          padding: 0 3px;
+        }
+
+        .liste-depenses-jour.densite-5
+        .depense-nom-zone {
+          gap: 2px;
+        }
+
+        .liste-depenses-jour.densite-5
+        .depense-categorie-point {
+          width: 5px;
+          height: 5px;
+        }
+
+        .liste-depenses-jour.densite-5
+        .depense-nom {
+          font-size:
+            clamp(
+              7px,
+              0.52vw,
+              9px
+            );
+        }
+
+        .liste-depenses-jour.densite-5
+        .depense-montant {
+          font-size:
+            clamp(
+              7px,
+              0.5vw,
+              8px
+            );
+        }
+
+        .liste-depenses-jour.densite-5
+        .depense-supprimer {
+          width: 13px;
+          font-size: 9px;
+        }
+
+        .jour-haut-droite {
+          min-width: 0;
+
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+
+          gap: 4px;
+        }
+
+        .jour-plus {
+          flex-shrink: 0;
+
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+
+          min-width: 20px;
+          height: 17px;
+
+          padding: 0 5px;
+
+          border-radius: 999px;
+
+          background: #eef2f6;
+          color: #475467;
+
+          font-size: 8px;
+          font-weight: 800;
+          line-height: 1;
+
+          white-space: nowrap;
         }
 
         .depense-calendrier {
@@ -1069,8 +1266,22 @@ function Calendrier({
             height: 21px;
           }
 
+          .liste-depenses-jour.densite-4
+          .depense-calendrier,
+          .liste-depenses-jour.densite-5
+          .depense-calendrier {
+            height: 16px;
+          }
+
           .depense-nom {
             font-size: 8px;
+          }
+
+          .jour-plus {
+            min-width: 18px;
+            height: 15px;
+            padding: 0 4px;
+            font-size: 7px;
           }
 
           .depense-montant {
@@ -1178,6 +1389,24 @@ function Calendrier({
                   0
                 );
 
+              const depensesVisibles =
+                depensesJour.slice(
+                  0,
+                  5
+                );
+
+              const nombreCachees =
+                Math.max(
+                  0,
+                  depensesJour.length - 5
+                );
+
+              const niveauDensite =
+                Math.min(
+                  depensesJour.length,
+                  5
+                );
+
               return (
                 <div
                   key={date}
@@ -1232,17 +1461,34 @@ function Calendrier({
                       {jour}
                     </span>
 
-                    {total > 0 && (
-                      <span className="jour-total">
-                        {argent(
-                          total
-                        )}
-                      </span>
-                    )}
+                    <div className="jour-haut-droite">
+                      {nombreCachees > 0 && (
+                        <span
+                          className="jour-plus"
+                          title={`${nombreCachees} dépense${
+                            nombreCachees > 1
+                              ? "s"
+                              : ""
+                          } de plus`}
+                        >
+                          +{nombreCachees}
+                        </span>
+                      )}
+
+                      {total > 0 && (
+                        <span className="jour-total">
+                          {argent(
+                            total
+                          )}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="liste-depenses-jour">
-                    {depensesJour.map(
+                  <div
+                    className={`liste-depenses-jour densite-${niveauDensite}`}
+                  >
+                    {depensesVisibles.map(
                       (depense) => {
                         const categorie =
                           normaliserCategorie(
